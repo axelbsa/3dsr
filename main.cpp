@@ -2,6 +2,8 @@
 #include <cstdlib>
 #include <vector>
 #include <map>
+#include <limits>
+#include <iostream>
 
 #include <stdint.h>
 #include "raylib.h"
@@ -9,14 +11,12 @@
 #define MIN_INTERVAL (1.0 / 100.0)
 #define MAX_LATENCY   0.5
 
-const int screenWidth = 1024;
-const int screenHeight = 600;
-const Color BACKGROUND = {0, 166, 215};
 
 class Vertex {
     public:
         Vertex();
         Vertex(float, float, float, float, float, float, float,float, float, float);
+		friend std::ostream& operator<<(std::ostream& os, const Vertex& v);
         float x = 0.0f;   // coordinate in 3D space
         float y = 0.0f;
         float z = 0.0f;
@@ -35,7 +35,24 @@ class Triangle{
     public:
         Triangle();
         Vertex vertices[3];
+		friend std::ostream& operator<<(std::ostream& os, const Triangle& t);
 };
+
+std::ostream& operator<<(std::ostream& os, const Vertex& v)
+{
+    os << "Vertex: x=" << v.x << " y=" << v.y << " z=" << v.z << std::endl;
+	return os;  
+}
+
+std::ostream& operator<<(std::ostream& os, const Triangle& t)
+{  
+	//os << dt.mo << '/' << dt.da << '/' << dt.yr;
+    for (int i = 0; i < 3; i++)
+    {
+	    os << t.vertices[i];
+    }
+	return os;  
+} 
 
 
 Vertex::Vertex() {}
@@ -61,6 +78,48 @@ Triangle::Triangle()
 
 }
 
+const int screenWidth = 1024;
+const int screenHeight = 600;
+const Color BACKGROUND = {0, 166, 215};
+
+std::map<int,Triangle> triangles;
+
+float modelX = 0;
+float modelY = 0;
+float modelZ = 0;
+
+float modelScaleX = 1;
+float modelScaleY = 1;
+float modelScaleZ = 1;
+
+float modelRotateX = 0;
+float modelRotateY = 0;
+float modelRotateZ = 0;
+
+float modelOriginX = 10;
+float modelOriginY = 0;
+float modelOriginZ = 10;
+
+float cameraX =  0;
+float cameraY =  20;
+float cameraZ = -20;
+
+float ambientR = 1;
+float ambientG = 1;
+float ambientB = 1;
+float ambientIntensity = 0.2;
+
+float diffuseR = 1;
+float diffuseG = 1;
+float diffuseB = 1;
+float diffuseIntensity = 0.8;
+
+float diffuseX = 0;    // direction of the diffuse light
+float diffuseY = 0;   // (this vector should have length 1)
+float diffuseZ = 1;
+
+float depthBuffer[screenWidth * screenHeight] = {0};
+
 
 void Update(float dx)
 {
@@ -70,7 +129,6 @@ void Update(float dx)
 
 void Init()
 {
-    std::map<int,Triangle> triangles;
 
     Triangle tr_0;
     tr_0.vertices[0] = Vertex(-10, -10, 10, 0, 0, 1, 1, 0, 0, 1);
@@ -147,41 +205,20 @@ void Init()
     tr_11.vertices[2] = Vertex(-10,  10, -10, 1, 1, 0, 1, -0.577,  0.577, -0.577);
     triangles[11] = tr_11;
 
-    float modelX = 0;
-    float modelY = 0;
-    float modelZ = 0;
 
-    float modelScaleX = 1;
-    float modelScaleY = 1;
-    float modelScaleZ = 1;
+    for (int i = 0; i < screenHeight * screenHeight; i++)
+    {
+        depthBuffer[i] = std::numeric_limits<float>::max();
+    }
 
-    float modelRotateX = 0;
-    float modelRotateY = 0;
-    float modelRotateZ = 0;
+    std::map<int,Triangle> transformed;
+    transformed = triangles;
 
-    float modelOriginX = 10;
-    float modelOriginY = 0;
-    float modelOriginZ = 10;
-
-    float cameraX =  0;
-    float cameraY =  20;
-    float cameraZ = -20;
-
-    float ambientR = 1;
-    float ambientG = 1;
-    float ambientB = 1;
-    float ambientIntensity = 0.2;
-
-    float diffuseR = 1;
-    float diffuseG = 1;
-    float diffuseB = 1;
-    float diffuseIntensity = 0.8;
-
-    float diffuseX = 0;    // direction of the diffuse light
-    float diffuseY = 0;   // (this vector should have length 1)
-    float diffuseZ = 1;
-
-    float depthBuffer[screenWidth * screenHeight] = 0;
+	for(auto &mPair : transformed)
+	{
+        std::cout << mPair.first << " Triangle" << std::endl;
+        std::cout << mPair.second << std::endl;
+	}
 
 
     while (!WindowShouldClose()) {
