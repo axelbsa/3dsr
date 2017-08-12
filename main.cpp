@@ -16,7 +16,7 @@
 class Vertex {
     public:
         Vertex();
-        Vertex(float, float, float, float, float, float, float,float, float, float);
+        Vertex(float, float, float, float, float, float, float, float, float, float);
 		friend std::ostream& operator<<(std::ostream& os, const Vertex& v);
         float x = 0.0f;   // coordinate in 3D space
         float y = 0.0f;
@@ -32,8 +32,27 @@ class Vertex {
         float nz = 0.0f;
 };
 
+Vertex::Vertex() {}
+Vertex::Vertex(float x, float y, float z, float r, float g, float b, float a, float nx, float ny, float nz)
+{
+    this->x = x;
+    this->y = y;
+    this->z = z;
+
+    this->r = r;
+    this->g = g;
+    this->b = b;
+    this->a = a;
+
+    this->nx = nx;
+    this->ny = ny;
+    this->nz = nz;
+}
+
 class Edge {
     public:
+        Edge();
+        Edge(float, float, float, float, float, float, float, float, float);
         float x = 0.0f;   // start or end coordinate of horizontal strip
 
         float r = 0.0f;   // color at this point
@@ -46,7 +65,26 @@ class Edge {
         float nx = 0.0f;  // interpolated normal vector
         float ny = 0.0f;
         float nz = 0.0f;
+
 };
+
+Edge::Edge() {}
+Edge::Edge(float x, float r, float g, float b, float a, float z, float nx, float ny, float nz)
+{
+    this->x = x;
+
+    this->r = r;
+    this->g = g;
+    this->b = b;
+    this->a = a;
+
+    this->z = z;
+
+    this->nx = nx;
+    this->ny = ny;
+    this->nz = nz;
+}
+
 
 class Triangle{
     public:
@@ -73,6 +111,7 @@ Edge Span::rightEdge()
 }
 
 
+
 std::ostream& operator<<(std::ostream& os, const Vertex& v)
 {
     os << "Vertex: x=" << v.x << " y=" << v.y << " z=" << v.z << std::endl;
@@ -89,22 +128,6 @@ std::ostream& operator<<(std::ostream& os, const Triangle& t)
 	return os;  
 } 
 
-Vertex::Vertex() {}
-Vertex::Vertex(float x, float y, float z, float r, float g, float b, float a, float nx, float ny, float nz)
-{
-    this->x = x;
-    this->y = y;
-    this->z = z;
-
-    this->r = r;
-    this->g = g;
-    this->b = b;
-    this->a = a;
-
-    this->nx = nx;
-    this->ny = ny;
-    this->nz = nz;
-}
 
 Triangle::Triangle()
 {
@@ -233,12 +256,9 @@ void addEdge(Vertex vertex1, Vertex vertex2)
             }
 
             // Add this edge to the span for this line.
-            /*
-            spans[yPos].edges.append(Edge(x: x,
-                        r: rPos, g: gPos, b: bPos, a: aPos,
-                        z: zPos,
-                        nx: nxPos, ny: nyPos, nz: nzPos));
-            */
+            Edge newEdge = Edge(x, rPos, gPos, bPos, aPos, zPos, nxPos, nyPos, nzPos);
+            spans[yPos].edges.push_back(newEdge);
+            
         }
 
         // Move the interpolations one step forward.
@@ -252,6 +272,78 @@ void addEdge(Vertex vertex1, Vertex vertex2)
         nxPos += nxStep;
         nyPos += nyStep;
         nzPos += nzStep;
+    }
+}
+
+void drawSpans()
+{
+    bool useDepthBuffer = true;
+    if (lastSpanLine != -1)
+    {
+        for (int y = firstSpanLine; y < lastSpanLine; y++)
+        {
+
+            if (spans[y].edges.size() == 2)
+            {
+
+                Edge edge1 = spans[y].leftEdge();
+                Edge edge2 = spans[y].rightEdge();
+
+                // How much to interpolate on each step.
+                float step = 1 / float(edge2.x - edge1.x);
+                float pos = 0;
+
+                for (float x = edge1.x; x <= edge2.x; x++) {
+                    // Interpolate between the colors again.
+                    float r = edge1.r + (edge2.r - edge1.r) * pos;
+                    float g = edge1.g + (edge2.g - edge1.g) * pos;
+                    float b = edge1.b + (edge2.b - edge1.b) * pos;
+                    float a = edge1.a + (edge2.a - edge1.a) * pos;
+
+                    bool shouldDrawPixel = true;
+                    if (useDepthBuffer)
+                    {
+                        float z = edge1.z + (edge2.z - edge1.z) * pos;
+                        int offset = x + y * int(screenWidth);
+                        if (depthBuffer[offset] > z)
+                        {
+                            depthBuffer[offset] = z;
+                        }
+                        else
+                        {
+                            shouldDrawPixel = false;
+                        }
+                    }
+                    // Also interpolate the normal vector.
+                    float nx = edge1.nx + (edge2.nx - edge1.nx) * pos;
+                    float ny = edge1.ny + (edge2.ny - edge1.ny) * pos;
+                    float nz = edge1.nz + (edge2.nz - edge1.nz) * pos;
+
+                    if (shouldDrawPixel)
+                    {
+                        float factor = std::min(std::max(0.0f, -1 * (nx * diffuseX + ny * diffuseY + nz * diffuseZ)), 1.0f);
+                        r *= (ambientR * ambientIntensity + factor * diffuseR * diffuseIntensity);
+                        g *= (ambientG * ambientIntensity + factor * diffuseG * diffuseIntensity);
+                        b *= (ambientB * ambientIntensity + factor * diffuseB * diffuseIntensity);
+
+                        r = std::max(std::min(r, 1.0f), 0.0f);   // clamp the colors
+                        g = std::max(std::min(g, 1.0f), 0.0f);   // so they don't
+                        b = std::max(std::min(b, 1.0f), 0.0f);   // become too bright
+
+                        // Actually draw things
+                        ClearBackground(BACKGROUND);
+                        Color c = {r, g, b, a};
+                        DrawPixel(x, y, c);
+
+                    }
+
+                    pos += step;
+                }
+
+            }
+
+        }
+
     }
 
 }
@@ -473,6 +565,10 @@ void Init()
 
     //--------- end Transformation ----------
 
+}
+
+void Draw()
+{
     while (!WindowShouldClose()) {
         Update(GetFrameTime());
 
@@ -480,17 +576,14 @@ void Init()
         BeginDrawing();
 
             // Actually draw things
-            ClearBackground(BACKGROUND);
+            //ClearBackground(BACKGROUND);
+            Init();
 
         EndDrawing();
     }
 
     // Close window and OpenGL context
     CloseWindow();
-}
-
-void Draw()
-{
 }
 
 int main(int argc, char **argv)
