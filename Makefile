@@ -1,5 +1,5 @@
 CC=g++
-CFLAGS=-O2 -Wall -std=c++11 -Wno-missing-braces
+CFLAGS=-O2 -Wall -std=gnu++11 -Wno-missing-braces
 
 PLATFORM = $(shell uname)
 
