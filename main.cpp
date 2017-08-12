@@ -32,12 +32,46 @@ class Vertex {
         float nz = 0.0f;
 };
 
+class Edge {
+    public:
+        float x = 0.0f;   // start or end coordinate of horizontal strip
+
+        float r = 0.0f;   // color at this point
+        float g = 0.0f;
+        float b = 0.0f;
+        float a = 0.0f;
+
+        float z = 0.0f;   // for checking and filling in the depth buffer
+
+        float nx = 0.0f;  // interpolated normal vector
+        float ny = 0.0f;
+        float nz = 0.0f;
+};
+
 class Triangle{
     public:
         Triangle();
         Vertex vertices[3];
 		friend std::ostream& operator<<(std::ostream& os, const Triangle& t);
 };
+
+class Span {
+    public:
+        std::vector<Edge> edges;
+        Edge leftEdge();
+        Edge rightEdge();
+};
+
+Edge Span::leftEdge()
+{
+    return edges[0].x < edges[1].x ? edges[0] : edges[1];
+}
+
+Edge Span::rightEdge()
+{
+    return edges[0].x > edges[1].x ? edges[0] : edges[1];
+}
+
 
 std::ostream& operator<<(std::ostream& os, const Vertex& v)
 {
@@ -54,7 +88,6 @@ std::ostream& operator<<(std::ostream& os, const Triangle& t)
     }
 	return os;  
 } 
-
 
 Vertex::Vertex() {}
 Vertex::Vertex(float x, float y, float z, float r, float g, float b, float a, float nx, float ny, float nz)
@@ -73,7 +106,6 @@ Vertex::Vertex(float x, float y, float z, float r, float g, float b, float a, fl
     this->nz = nz;
 }
 
-
 Triangle::Triangle()
 {
 
@@ -84,6 +116,10 @@ const int screenHeight = 600;
 const Color BACKGROUND = {0, 166, 215};
 
 std::map<int,Triangle> triangles;
+
+Span spans[screenHeight];
+int firstSpanLine = 0;
+int lastSpanLine = 0;
 
 float modelX = 0;
 float modelY = 0;
@@ -121,12 +157,104 @@ float diffuseZ = 1;
 
 float depthBuffer[screenWidth * screenHeight] = {0};
 
-
 void Update(float dx)
 {
 
 }
 
+void addEdge(Vertex vertex1, Vertex vertex2)
+{
+    Vertex start;
+    Vertex end;
+
+    float yDiff = ceil(vertex2.y - 0.5) - ceil(vertex1.y - 0.5);
+    float len = abs(yDiff);
+
+    if (yDiff == 0)
+    {
+        return;
+    }
+
+    if (yDiff > 0) 
+    {
+        start = vertex1;
+        end = vertex2;
+    }
+    else
+    {
+        start = vertex2;
+        end = vertex1;
+    }
+
+    int yPos = int(ceil(start.y - 0.5));       // y should be integer because it
+    int yEnd = int(ceil(end.y - 0.5));         // needs to fit on a 1-pixel line
+    float xStep = (end.x - start.x) / len;     // x can stay floating point for now
+    float xPos = start.x + xStep / 2;
+
+    float zStep = (end.z - start.z) / len;
+    float zPos = start.z + zStep / 2;
+
+    float rStep = (end.r - start.r) / len;
+    float rPos = start.r;
+
+    float gStep = (end.g - start.g)/len;
+    float gPos = start.g;
+
+    float bStep = (end.b - start.b) / len;
+    float bPos = start.b;
+
+    float aStep = (end.a - start.a) / len;
+    float aPos = start.a;
+
+    float nxStep = (end.nx - start.nx) / len;
+    float nxPos = start.nx;
+
+    float nyStep = (end.ny - start.ny) / len;
+    float nyPos = start.ny;
+
+    float nzStep = (end.nz - start.nz) / len;
+    float nzPos = start.nz;
+
+    while (yPos < yEnd) {
+        int x = int(ceil(xPos - 0.5));       // now we make x an integer too
+        // Don't want to go outside the visible area.
+        if (yPos >= 0 && yPos < screenHeight) {
+            // This is to optimize drawSpans(), so it knows where to start
+            // drawing and where to stop.
+
+            if (yPos < firstSpanLine) 
+            {
+                firstSpanLine = yPos;
+            }
+
+            if (yPos > lastSpanLine) 
+            {
+                lastSpanLine = yPos; 
+            }
+
+            // Add this edge to the span for this line.
+            /*
+            spans[yPos].edges.append(Edge(x: x,
+                        r: rPos, g: gPos, b: bPos, a: aPos,
+                        z: zPos,
+                        nx: nxPos, ny: nyPos, nz: nzPos));
+            */
+        }
+
+        // Move the interpolations one step forward.
+        yPos += 1;
+        xPos += xStep;
+        zPos += zStep;
+        rPos += rStep;
+        gPos += gStep;
+        bPos += bStep;
+        aPos += aStep;
+        nxPos += nxStep;
+        nyPos += nyStep;
+        nzPos += nzStep;
+    }
+
+}
 
 void Init()
 {
@@ -212,6 +340,11 @@ void Init()
         depthBuffer[i] = std::numeric_limits<float>::max();
     }
 
+    for (int i = 0; i < screenHeight; i++)
+    {
+        Span sp;
+        spans[i] = sp;
+    }
 
     //--------- Transformation to view space ----------
 
@@ -355,7 +488,6 @@ void Init()
     // Close window and OpenGL context
     CloseWindow();
 }
-
 
 void Draw()
 {
