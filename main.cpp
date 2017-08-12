@@ -4,6 +4,7 @@
 #include <map>
 #include <limits>
 #include <iostream>
+#include <cmath>
 
 #include <stdint.h>
 #include "raylib.h"
@@ -211,15 +212,133 @@ void Init()
         depthBuffer[i] = std::numeric_limits<float>::max();
     }
 
+
+    //--------- Transformation to view space ----------
+
     std::map<int,Triangle> transformed;
     transformed = triangles;
 
-	for(auto &mPair : transformed)
+	for(auto &mTriangle : transformed)
 	{
-        std::cout << mPair.first << " Triangle" << std::endl;
-        std::cout << mPair.second << std::endl;
+        Triangle newTriangle;
+
+        std::cout << mTriangle.first << " Triangle" << std::endl;
+        std::cout << mTriangle.second << std::endl;
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vertex newVertex = mTriangle.second.vertices[i];
+
+            /* Translation */
+            newVertex.x -= modelOriginX;
+            newVertex.y -= modelOriginY;
+            newVertex.z -= modelOriginZ;
+
+            /* Scaling */
+            newVertex.x *= modelScaleX;
+            newVertex.y *= modelScaleY;
+            newVertex.z *= modelScaleZ;
+
+            /* Rotations */
+            // Rotate about the X-axis.
+            float tempA =  cos(modelRotateX) * newVertex.y + sin(modelRotateX) * newVertex.z;
+            float tempB = -sin(modelRotateX) * newVertex.y + cos(modelRotateX) * newVertex.z;
+            newVertex.y = tempA;
+            newVertex.z = tempB;
+
+            // Rotate about the Y-axis:
+            tempA =  cos(modelRotateY) * newVertex.x + sin(modelRotateY) * newVertex.z;
+            tempB = -sin(modelRotateY) * newVertex.x + cos(modelRotateY) * newVertex.z;
+            newVertex.x = tempA;
+            newVertex.z = tempB;
+
+            // Rotate about the Z-axis:
+            tempA =  cos(modelRotateZ) * newVertex.x + sin(modelRotateZ) * newVertex.y;
+            tempB = -sin(modelRotateZ) * newVertex.x + cos(modelRotateZ) * newVertex.y;
+            newVertex.x = tempA;
+            newVertex.y = tempB;
+
+            /* Normal Vector recalc */
+            tempA =  cos(modelRotateY)*newVertex.nx + sin(modelRotateY)*newVertex.nz;
+            tempB = -sin(modelRotateY)*newVertex.nx + cos(modelRotateY)*newVertex.nz;
+            newVertex.nx = tempA;
+            newVertex.nz = tempB;
+
+            /* Translation (moving) */
+            newVertex.x += modelX;
+            newVertex.y += modelY;
+            newVertex.z += modelZ;
+
+            newTriangle.vertices[i] = newVertex;
+        }
+
+        mTriangle.second = newTriangle;
+
 	}
 
+    //--------- end Transformation ----------
+    //--------- Transformation to camera space ----------
+    
+	for(auto &mTriangle : transformed)
+	{
+        Triangle newTriangle;
+
+        std::cout << mTriangle.first << " Triangle" << std::endl;
+        std::cout << mTriangle.second << std::endl;
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vertex newVertex = mTriangle.second.vertices[i];
+            
+            // Move everything in the world opposite to the camera, i.e. if the
+            // camera moves to the left, everything else moves to the right.
+            newVertex.x -= cameraX;
+            newVertex.y -= cameraY;
+            newVertex.z -= cameraZ;
+
+            // Likewise, you can perform rotations as well. If the camera rotates
+            // to the left with angle alpha, everything else rotates away from the
+            // camera to the right with angle -alpha. (I did not implement that in
+            // this demo.)
+
+            newTriangle.vertices[i] = newVertex;
+
+        }
+
+        mTriangle.second = newTriangle;
+    }
+    
+    //--------- end Transformation ----------
+    //--------- Transformation to screen space (pixels) ----------
+
+	for(auto &mTriangle : transformed)
+	{
+        Triangle newTriangle;
+
+        std::cout << mTriangle.first << " Triangle" << std::endl;
+        std::cout << mTriangle.second << std::endl;
+
+        for (int i = 0; i < 3; i++)
+        {
+            Vertex newVertex = mTriangle.second.vertices[i];
+
+            newVertex.x /= (newVertex.z + 100) * 0.01;
+            newVertex.y /= (newVertex.z + 100) * 0.01;
+
+            newVertex.x *= float(screenHeight) / 80;
+            newVertex.y *= float(screenHeight) / 80;
+
+            newVertex.x += float(screenWidth / 2);
+            newVertex.y += float(screenHeight / 2);
+
+            newTriangle.vertices[i] = newVertex;
+
+        }
+
+        mTriangle.second = newTriangle;
+    }
+
+    //--------- end Transformation ----------
 
     while (!WindowShouldClose()) {
         Update(GetFrameTime());
