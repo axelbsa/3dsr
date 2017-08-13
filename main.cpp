@@ -134,6 +134,8 @@ Triangle::Triangle()
 
 }
 
+void Draw(Triangle tri);
+
 const int screenWidth = 1024;
 const int screenHeight = 600;
 const Color BACKGROUND = {0, 166, 215};
@@ -182,6 +184,7 @@ float depthBuffer[screenWidth * screenHeight] = {0};
 
 void Update(float dx)
 {
+    modelRotateX += 0.01f;
 
 }
 
@@ -330,9 +333,11 @@ void drawSpans()
                         g = std::max(std::min(g, 1.0f), 0.0f);   // so they don't
                         b = std::max(std::min(b, 1.0f), 0.0f);   // become too bright
 
+                        //fprintf(stderr, "Drawing the pixels\n");
+
                         // Actually draw things
                         ClearBackground(BACKGROUND);
-                        Color c = {r, g, b, a};
+                        Color c = {r*255, g*255, b*255, 255};
                         DrawPixel(x, y, c);
 
                     }
@@ -432,11 +437,6 @@ void Init()
         depthBuffer[i] = std::numeric_limits<float>::max();
     }
 
-    for (int i = 0; i < screenHeight; i++)
-    {
-        Span sp;
-        spans[i] = sp;
-    }
 
     //--------- Transformation to view space ----------
 
@@ -508,8 +508,8 @@ void Init()
 	{
         Triangle newTriangle;
 
-        std::cout << mTriangle.first << " Triangle" << std::endl;
-        std::cout << mTriangle.second << std::endl;
+        //std::cout << mTriangle.first << " Triangle" << std::endl;
+        //std::cout << mTriangle.second << std::endl;
 
         for (int i = 0; i < 3; i++)
         {
@@ -540,8 +540,8 @@ void Init()
 	{
         Triangle newTriangle;
 
-        std::cout << mTriangle.first << " Triangle" << std::endl;
-        std::cout << mTriangle.second << std::endl;
+        //std::cout << mTriangle.first << " Triangle" << std::endl;
+        //std::cout << mTriangle.second << std::endl;
 
         for (int i = 0; i < 3; i++)
         {
@@ -565,10 +565,45 @@ void Init()
 
     //--------- end Transformation ----------
 
+    // 4: Draw these 2D triangles on the screen.
+    //for triangle in projected {
+        //draw(triangle: triangle)
+    //}
+	for(auto &mTriangle : transformed)
+	{
+        std::cout << mTriangle.first << " Triangle" << std::endl;
+        std::cout << mTriangle.second << std::endl;
+        Draw(mTriangle.second);
+    }
+
+
 }
 
-void Draw()
+void Draw(Triangle triangle)
 {
+    firstSpanLine = std::numeric_limits<int>::max();
+    lastSpanLine = -1;
+
+    for (int i = 0; i < screenHeight; i++)
+    {
+        Span sp;
+        spans[i] = sp;
+    }
+
+    addEdge(triangle.vertices[0], triangle.vertices[1]);
+    addEdge(triangle.vertices[1], triangle.vertices[2]);
+    addEdge(triangle.vertices[2], triangle.vertices[0]);
+
+    drawSpans();
+
+}
+
+int main(int argc, char **argv)
+{
+    SetConfigFlags(FLAG_VSYNC_HINT); // Use before InitWindow()
+    InitWindow(screenWidth, screenHeight, "3D-test");
+    SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
+
     while (!WindowShouldClose()) {
         Update(GetFrameTime());
 
@@ -581,19 +616,10 @@ void Draw()
 
         EndDrawing();
     }
+    //while(true) {}
 
     // Close window and OpenGL context
     CloseWindow();
-}
-
-int main(int argc, char **argv)
-{
-    SetConfigFlags(FLAG_VSYNC_HINT); // Use before InitWindow()
-    InitWindow(screenWidth, screenHeight, "3D-test");
-    SetTargetFPS(60);       // Set our game to run at 60 frames-per-second
-
-    Init();
-    Draw();
 
     return 0;
 }
