@@ -136,7 +136,7 @@ Triangle::Triangle()
 
 void Draw(Triangle tri);
 
-const int screenWidth = 1024;
+const int screenWidth = 800;
 const int screenHeight = 600;
 const Color BACKGROUND = {0, 166, 215};
 
@@ -184,8 +184,9 @@ float depthBuffer[screenWidth * screenHeight] = {0};
 
 void Update(float dx)
 {
-    modelRotateX += 0.01f;
-
+    modelRotateX += 0.1f;
+    modelRotateZ += 0.1f;
+    modelRotateY += 0.05f;
 }
 
 void addEdge(Vertex vertex1, Vertex vertex2)
@@ -616,7 +617,6 @@ int main(int argc, char **argv)
 
         EndDrawing();
     }
-    //while(true) {}
 
     // Close window and OpenGL context
     CloseWindow();
