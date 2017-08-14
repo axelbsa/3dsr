@@ -5,6 +5,7 @@
 #include <limits>
 #include <iostream>
 #include <cmath>
+#include <algorithm>
 
 #include <stdint.h>
 #include "raylib.h"
@@ -163,8 +164,8 @@ float modelOriginY = 0;
 float modelOriginZ = 10;
 
 float cameraX =  0;
-float cameraY =  20;
-float cameraZ = -20;
+float cameraY =  0;
+float cameraZ = -100;
 
 float ambientR = 1;
 float ambientG = 1;
@@ -184,9 +185,9 @@ float depthBuffer[screenWidth * screenHeight] = {0};
 
 void Update(float dx)
 {
-    modelRotateX += 0.1f;
-    modelRotateZ += 0.1f;
-    modelRotateY += 0.05f;
+    modelRotateX += 0.01f;
+    modelRotateZ += 0.01f;
+    modelRotateY += 0.01f;
 }
 
 void addEdge(Vertex vertex1, Vertex vertex2)
@@ -325,20 +326,23 @@ void drawSpans()
 
                     if (shouldDrawPixel)
                     {
-                        float factor = std::min(std::max(0.0f, -1 * (nx * diffuseX + ny * diffuseY + nz * diffuseZ)), 1.0f);
+                        float factor = std::min(std::max(0.0f, -1.0f * (nx * diffuseX + ny * diffuseY + nz * diffuseZ)), 1.0f);
                         r *= (ambientR * ambientIntensity + factor * diffuseR * diffuseIntensity);
                         g *= (ambientG * ambientIntensity + factor * diffuseG * diffuseIntensity);
                         b *= (ambientB * ambientIntensity + factor * diffuseB * diffuseIntensity);
 
-                        r = std::max(std::min(r, 1.0f), 0.0f);   // clamp the colors
-                        g = std::max(std::min(g, 1.0f), 0.0f);   // so they don't
-                        b = std::max(std::min(b, 1.0f), 0.0f);   // become too bright
+                        //r = std::max(std::min(r, 1.0f), 0.0f);   // clamp the colors
+                        //g = std::max(std::min(g, 1.0f), 0.0f);   // so they don't
+                        //b = std::max(std::min(b, 1.0f), 0.0f);   // become too bright
 
                         //fprintf(stderr, "Drawing the pixels\n");
 
                         // Actually draw things
-                        ClearBackground(BACKGROUND);
-                        Color c = {r*255, g*255, b*255, 255};
+                        //std::cout << "Color info: r: " << r
+                            //<< " g: " << g
+                            //<< " b: " << b
+                            //<< " a: " << a << std::endl;
+                        Color c = {std::ceil(r * 255), g * 255, b * 255, a * 255};
                         DrawPixel(x, y, c);
 
                     }
@@ -485,10 +489,23 @@ void Init()
             newVertex.y = tempB;
 
             /* Normal Vector recalc */
+			// Recalc X-axis normals.
+			tempA =  cos(modelRotateX)*newVertex.ny + sin(modelRotateX)*newVertex.nz;
+			tempB = -sin(modelRotateX)*newVertex.ny + cos(modelRotateX)*newVertex.nz;
+			newVertex.ny = tempA;
+			newVertex.nz = tempB;
+
+			// Recalc Y-axis normals.
             tempA =  cos(modelRotateY)*newVertex.nx + sin(modelRotateY)*newVertex.nz;
             tempB = -sin(modelRotateY)*newVertex.nx + cos(modelRotateY)*newVertex.nz;
             newVertex.nx = tempA;
             newVertex.nz = tempB;
+
+			// Recalc Z-axis normals.
+			tempA =  cos(modelRotateZ)*newVertex.nx + sin(modelRotateZ)*newVertex.ny;
+			tempB = -sin(modelRotateZ)*newVertex.nx + cos(modelRotateZ)*newVertex.ny;
+			newVertex.nx = tempA;
+			newVertex.ny = tempB;
 
             /* Translation (moving) */
             newVertex.x += modelX;
@@ -612,7 +629,7 @@ int main(int argc, char **argv)
         BeginDrawing();
 
             // Actually draw things
-            //ClearBackground(BACKGROUND);
+            ClearBackground(BACKGROUND);
             Init();
 
         EndDrawing();
