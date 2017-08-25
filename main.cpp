@@ -116,17 +116,17 @@ Edge Span::rightEdge()
 std::ostream& operator<<(std::ostream& os, const Vertex& v)
 {
     os << "Vertex: x=" << v.x << " y=" << v.y << " z=" << v.z << std::endl;
-	return os;  
+    return os;  
 }
 
 std::ostream& operator<<(std::ostream& os, const Triangle& t)
 {  
-	//os << dt.mo << '/' << dt.da << '/' << dt.yr;
+    //os << dt.mo << '/' << dt.da << '/' << dt.yr;
     for (int i = 0; i < 3; i++)
     {
-	    os << t.vertices[i];
+        os << t.vertices[i];
     }
-	return os;  
+    return os;  
 } 
 
 
